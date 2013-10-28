@@ -1,0 +1,98 @@
+##################################################
+# Navigation                                     #
+##################################################
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+alias .....="cd ../../../.."
+alias ~="cd ~" # `cd` is probably faster to type though
+alias -- -="cd -"
+
+##################################################
+# Shortcuts                                      #
+##################################################
+alias g="git"
+alias h="history"
+alias v="vim"
+alias md5='md5sum'
+alias today='date +"%A, %B %d, %Y"'
+alias emptyTrash='sudo rm -fr ~/.Trash'
+alias liquid='source ~/.dot/.liquidprompt'
+
+##################################################
+# SSH                                            #
+##################################################
+alias sendsshkeyto='cat ~/.ssh/id_rsa.pub | ssh $1 "cat - >> ~/.ssh/authorized_keys2"'
+alias oscdev="ssh oscdev2.searchrev.com -l alekse"
+alias kuzya="ssh kuzya.com -l secretgspot"
+alias mierda='sudo rm -rf searchrev_templates_c/%%* logs/*log logs/*txt uploads/*csv* uploads/*zip* uploads/*xls* uploads/*context* uploads/*log* uploads/*txt*'
+
+##################################################
+# SSHFS                                          #
+##################################################
+alias mountOSCDEV="sshfs -o idmap=user alekse@oscdev2.searchrev.com:/home/alekse/new_ui_20121213 /home/ruso/OSCDEV"
+
+##################################################
+# Permissions                                    #
+##################################################
+alias 000='chmod 000'
+alias 640='chmod 640'
+alias 644='chmod 644'
+alias 755='chmod 755'
+alias 775='chmod 775'
+alias mx='chmod a+x'
+alias perm='stat --printf "%a %n \n "'                              # requires a file name e.g. perm file
+alias restoremod='chgrp users -R .;chmod u=rwX,g=rX,o=rX -R .;chown $(pwd |cut -d / -f 3) -R .' # restore user,group and mod of an entire website
+
+##################################################
+# Log                                            #
+##################################################
+alias tl='tail -f /var/log/apache/access.log'
+alias te='tail -f /var/log/apache/error.log'
+
+##################################################
+# Controls                                       #
+##################################################
+alias move='mv -ivr'
+alias copy='cp -ivr'
+alias rename='mv -iv'
+alias delete='rm -ivr'
+alias edit='vi'
+
+##################################################
+# LS                                             #
+##################################################
+alias ls='ls --color=auto'
+alias ll="ls -l --group-directories-first"
+alias ls='ls -hF --color'  # add colors for filetype recognition
+alias la='ls -Al'          # show hidden files
+alias lx='ls -lXB'         # sort by extension
+alias lk='ls -lSr'         # sort by size, biggest last
+alias lc='ls -ltcr'        # sort by and show change time, most recent last
+alias lu='ls -ltur'        # sort by and show access time, most recent last
+alias lt='ls -ltr'         # sort by date, most recent last
+alias lm='ls -al |more'    # pipe through 'more'
+alias lr='ls -lR'          # recursive ls
+alias tree='find . -type d | sed -e "s/[^-][^\/]*\//  |/g;s/|\([^ ]\)/|-\1/"'
+export LS_COLORS="di=31;1:ln=36;1:ex=31;1:*~=31;1:*.html=31;1:*.shtml=37;1"
+
+##################################################
+# Network                                        #
+##################################################
+alias ix="ifconfig"
+alias iw="iwconfig"
+alias ping='ping -c 6'
+alias openPorts='sudo lsof -Pni4 | grep -i "listen"'
+alias scan192='nmap -sT -oG - 192.168.*.* | grep open'
+alias publicip='curl ifconfig.me'
+alias mygateway='netstat -rn | awk "/UG/{print $2}"'
+alias watchNetwork='sudo watch -n 1 "netstat -tpanl | grep ESTABLISHED"'
+alias webshare='python -c "import SimpleHTTPServer;SimpleHTTPServer.test()"'
+
+
+# Detect which `ls` flavor is in use
+if ls --color > /dev/null 2>&1; then # GNU `ls`
+    colorflag="--color"
+else # OS X `ls`
+    colorflag="-G"
+fi

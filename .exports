@@ -1,0 +1,43 @@
+# ENVIROMENT AND PATHS
+# #
+export PATH="$PATH:/usr/local/bin:/usr/local/sbin:/usr/local/mysql/bin:/opt"
+export PATH="$HOME/bin/:$PATH"
+export PATH="$HOME/opt/sublime/:$PATH"
+export JDK_HOME="/opt/jdk/bin/java"
+export HISTSIZE=1000000
+export HISTFILESIZE=1000000
+export HISTIGNORE="cd:ls:[bf]g:clear:exit:sudo"
+export HISTCONTROL=ignoredups
+export PAGER=less
+export CLICOLOR=1
+export EDITOR="sublime_text"
+
+# Prefer US English and use UTF-8
+export LC_ALL="en_US.UTF-8"
+export LANG="en_US"
+
+# Handle local MAIL Directories
+if [ -d $HOME/Maildir/ ]; then
+    export MAIL="$HOME/Maildir/"
+    export MAILPATH="$HOME/Maildir/"
+    export MAILDIR="$HOME/Maildir/"
+elif [ -f /var/mail/$USER ]; then
+    export MAIL="/var/mail/$USER"
+fi
+
+# Export Display
+if [ -z ${DISPLAY:=""} ]; then
+    get_xserver
+    if [[ -z ${XSERVER}  || ${XSERVER} == $(hostname) || \
+      ${XSERVER} == "unix" ]]; then
+        DISPLAY=":0.0"          # Display on local host.
+    else
+        DISPLAY=${XSERVER}:0.0  # Display on remote host.
+    fi
+fi
+export DISPLAY
+
+# Export Terminal
+if [ "$TERM" = "screen" ]; then
+    export TERM="$TERMINAL"
+fi

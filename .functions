@@ -1,0 +1,283 @@
+
+# Create a new directory and enter it
+function mkd() {
+	mkdir -p "$@" && cd "$@"
+}
+
+# Determine size of a file or total size of a directory
+function fs() {
+	if du -b /dev/null > /dev/null 2>&1; then
+		local arg=-sbh
+	else
+		local arg=-sh
+	fi
+	if [[ -n "$@" ]]; then
+		du $arg -- "$@"
+	else
+		du $arg .[^.]* *
+	fi
+}
+
+# Use Git.s colored diff when available
+hash git &>/dev/null
+if [ $? -eq 0 ]; then
+	function diff() {
+		git diff --no-index --color-words "$@"
+	}
+fi
+
+# Create a data URL from a file
+function dataurl() {
+	local mimeType=$(file -b --mime-type "$1")
+	if [[ $mimeType == text/* ]]; then
+		mimeType="${mimeType};charset=utf-8"
+	fi
+	echo "data:${mimeType};base64,$(openssl base64 -in "$1" | tr -d '\n')"
+}
+
+# Start an HTTP server from a directory, optionally specifying the port
+function server() {
+	local port="${1:-8000}"
+	sleep 1 && open "http://localhost:${port}/" &
+	# Set the default Content-Type to `text/plain` instead of `application/octet-stream`
+	# And serve everything as UTF-8 (although not technically correct, this doesn.t break anything for binary files)
+	python -c $'import SimpleHTTPServer;\nmap = SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map;\nmap[""] = "text/plain";\nfor key, value in map.items():\n\tmap[key] = value + ";charset=UTF-8";\nSimpleHTTPServer.test();' "$port"
+}
+
+# Start a PHP server from a directory, optionally specifying the port
+# (Requires PHP 5.4.0+.)
+function phpserver() {
+	local port="${1:-4000}"
+	local ip=$(ipconfig getifaddr en1)
+	sleep 1 && open "http://${ip}:${port}/" &
+	php -S "${ip}:${port}"
+}
+
+# Get gzipped file size
+function gz() {
+	echo "orig size (bytes): "
+	cat "$1" | wc -c
+	echo "gzipped size (bytes): "
+	gzip -c "$1" | wc -c
+}
+
+# Test if HTTP compression (RFC 2616 + SDCH) is enabled for a given URL.
+# Send a fake UA string for sites that sniff it instead of using the Accept-Encoding header. (Looking at you, ajax.googleapis.com!)
+function httpcompression() {
+	encoding="$(curl -LIs -H 'User-Agent: Mozilla/5 Gecko' -H 'Accept-Encoding: gzip,deflate,compress,sdch' "$1" | grep '^Content-Encoding:')" && echo "$1 is encoded using ${encoding#* }" || echo "$1 is not using any encoding"
+}
+
+# Syntax-highlight JSON strings or files
+# Usage: `json '{"foo":42}'` or `echo '{"foo":42}' | json`
+function json() {
+	if [ -t 0 ]; then # argument
+		python -mjson.tool <<< "$*" | pygmentize -l javascript
+	else # pipe
+		python -mjson.tool | pygmentize -l javascript
+	fi
+}
+
+# Escape UTF-8 characters into their 3-byte format
+function escape() {
+	printf "\\\x%s" $(printf "$@" | xxd -p -c1 -u)
+	echo # newline
+}
+
+# Decode \x{ABCD}-style Unicode escape sequences
+function unidecode() {
+	perl -e "binmode(STDOUT, ':utf8'); print \"$@\""
+	echo # newline
+}
+
+# Get a character.s Unicode code point
+function codepoint() {
+	perl -e "use utf8; print sprintf('U+%04X', ord(\"$@\"))"
+	echo # newline
+}
+
+# shows network information for your system
+netinfo() {
+	echo -e "${grey}### ${BLUE}Network Information${grey} ############${reset}"
+	ifconfig | awk /'inet addr/ {print $2}'
+	ifconfig | awk /'Bcast/ {print $3}'
+	#ifconfig | awk /'inet addr/ {print $4}'
+	ifconfig | awk /'HWaddr/ {print $4,$5}'
+	lynx -dump -hiddenlinks=ignore -nolist http://checkip.dyndns.org:8245/ | sed '/^$/d; s/^[ ]*//g; s/[ ]*$//g'
+	echo -e "${grey}####################################${reset}"
+}
+
+# Get current host related info.
+function whereami() {
+	echo -e "\n${RED}You are logged onto:${reset} " ; hostname
+	echo -e "\n${RED}Additionnal information:${reset} " ; uname -a
+	echo -e "\n${RED}Users logged on:${reset} " ; w -h
+	echo -e "\n${RED}Current date:${reset} " ; date
+	echo -e "\n${RED}Machine stat:${reset} " ; uptime
+	echo -e "\n${RED}Disk space:${reset} " ; df -h
+	echo -e "\n${RED}Memory stats (in MB):${reset} " ; free -m
+	echo -e "\n${RED}Network:${reset} " ; ifconfig
+}
+
+# Displays Top History Commands
+topCommands(){ history|awk '{a[$2]++}END{for(i in a){printf"%5d\t%s\n",a[i],i}}'|sort -nr|head; }
+
+# cd directly to a dir and list contents
+cdl() {
+	if [ "$1" ]
+	then builtin cd "$1" && ll
+	else builtin cd && ll
+	fi
+}
+
+# Find a file with a pattern in name
+function ff() { find . -type f -iname '*'$*'*' -ls ; }
+
+# Find a file with pattern $1 in name and Execute $2 on it
+function fe() { find . -type f -iname '*'${1:-}'*' -exec ${2:-file} {} \;  ; }
+
+# Handy Extract Program.
+function extract() {
+	if [ -f $1 ] ; then
+		case $1 in
+			*.tar.bz2)   tar xvjf $1     ;;
+			*.tar.gz)    tar xvzf $1     ;;
+			*.bz2)       bunzip2 $1      ;;
+			*.rar)       unrar x $1      ;;
+			*.gz)        gunzip $1       ;;
+			*.tar)       tar xvf $1      ;;
+			*.tbz2)      tar xvjf $1     ;;
+			*.tgz)       tar xvzf $1     ;;
+			*.zip)       unzip $1        ;;
+			*.Z)         uncompress $1   ;;
+			*.7z)        7z x $1         ;;
+			*)           echo "'$1' cannot be extracted via >extract<" ;;
+		esac
+	else
+		echo "'$1' is not a valid file"
+ fi
+}
+
+# Handy Compress Programm.
+function compress_() {
+	# Credit goes to: Daenyth
+	FILE=$1
+	shift
+	case $FILE in
+		*.tar.bz2) tar cjf $FILE $*  ;;
+		*.tar.gz)  tar czf $FILE $*  ;;
+		*.tgz)     tar czf $FILE $*  ;;
+		*.zip)     zip $FILE $*      ;;
+		*.rar)     rar $FILE $*      ;;
+		*)         echo "Filetype not recognized" ;;
+	esac
+}
+
+# record screen
+function recordScreen() {
+	#ffmpeg -f x11grab -s 800x600 -r 24 -i :0.0 -sameq ~/Videos/ScreenCast/$1.mpg
+	ffmpeg -y -f alsa -ac 2 -i pulse -f x11grab -r 30 -s 'xdpyinfo | grep 'dimensions:'|awk '{print $2}'' -i :0.0 -acodec pcm_s16le ~/Videos/ScreenCast/$1.wav -an -vcodec libx264 -vpre lossless_ultrafast -threads 0 ~/Videos/recorded_$1.mp4
+}
+
+# record Webcam
+function recordWebcam() {
+	mplayer -cache 128 -tv driver=v4l2:width=176:height=177 -vo xv tv:// -noborder -geometry "95%:93%" -ontop | ffmpeg -y -f alsa -ac 2 -i pulse -f x11grab -r 30 -s 'xdpyinfo | grep 'dimensions:'|awk '{print $2}'' -i :0.0 -acodec pcm_s16le output.wav -an -vcodec libx264 -vpre lossless_ultrafast -threads 0 webcam_output.mp4
+}
+
+# Download a web page and show info on what took time
+function debug_http() { 
+	/usr/bin/curl $@ -o /dev/null -w "dns: %{time_namelookup} connect: %{time_connect} pretransfer: %{time_pretransfer} starttransfer: %{time_starttransfer} total: %{time_total}\n"; 
+}
+
+# Check headers of the site
+function http_headers() { /usr/bin/curl -I -L $@ ; }
+
+# define cheese
+function define() { curl dict://dict.org/d:"$@" ; }
+
+# Size directories
+function sizedir() {
+  echo "size of directories in MB"
+  if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    echo "directory not specified, using pwd"
+    DIR=$(pwd)
+    find $DIR -maxdepth 1 -type d -exec du -sm \{\} \; | sort -nr
+  else
+    find $1 -maxdepth 1 -type d -exec du -sm \{\} \; | sort -nr
+  fi
+}
+
+# Show files and sizes in current dir
+function sizefiles() {
+  du -sh * | awk '/[[:space:]]*[[:digit:]]+,*[[:digit:]]*G/' | sort -nr
+  du -sh * | awk '/[[:space:]]*[[:digit:]]+,*[[:digit:]]*M/' | sort -nr
+}
+
+# Stopwatch
+function stopwatch() {
+BEGIN=$(date +%s)
+while true; do
+  NOW=$(date +%s)
+  DIFF=$(($NOW - $BEGIN))
+  MINS=$(($DIFF / 60))
+  SECS=$(($DIFF % 60))
+  echo -ne "Time elapsed: $MINS:'printf %02d $SECS'\r"
+  sleep .1
+done
+}
+
+# Stream movies with vlc to port 8080.   on other computer use vlc http://server:8080
+#function stream() { vlc -I dummy $1 udp: --sout '#standard{access=http,mux=ts,dst=:8080}'; }
+
+# METAR ex:metar MRPV
+function metar() {
+_ICAO=$1
+if  [ $# = 1 ];then
+  printf "$_ICAO\n" | egrep '^[a-Z][a-Z][a-Z][a-Z]$' >>/dev/null
+  if   [ $? = 0 ];then
+    lynx -dump "http://aviationweather.gov/adds/metars/index.php?station_ids=$_ICAO" | sed -n '5,8p';
+  elif [ $? = 1 ];then
+    printf "Bad ICAO code!\n"
+  fi
+elif [ $# != 1 ];then
+  printf "You need to supply a ICAO code!\n"
+fi
+}
+
+# SVN display the revision number of the current repository
+function svn_rev() { 
+  svn info $@ | awk '/^Revision:/ {print $2}'
+}
+
+# SVN do a svn update and show the log messages since the last update
+function svn_uplog() {
+  local old_revision='svn_rev $@'
+  local first_update=$((${old_revision} + 1))
+
+  svn up -q $@
+  if [ $(svn_rev $@) -gt ${old_revision} ]; then
+    svn log -v -rHEAD:${first_update} $@
+  else
+    echo "No Changes."
+  fi
+}
+
+
+# Get X-Server
+function get_xserver()
+{
+    case $TERM in
+       xterm )
+            XSERVER=$(who am i | awk '{print $NF}' | tr -d ')''(' )
+            # Ane-Pieter Wieringa suggests the following alternative:
+            # I_AM=$(who am i)
+            # SERVER=${I_AM#*(}
+            # SERVER=${SERVER%*)}
+            XSERVER=${XSERVER%%:*}
+            ;;
+       aterm | rxvt)
+       # Find some code that works here. ...
+            ;;
+    esac
+}
+
+
